@@ -1,88 +1,95 @@
 # mikrotik_api/hotspot.py
 import os
+import logging
 from dotenv import load_dotenv
 from .client import get_mikrotik_connection
-from librouteros.exceptions import TrapError
+from .exceptions import MikrotikConnectionError, MikrotikOperationError
+from librouteros.exceptions import TrapError, ConnectionClosed
+
+# Initialize the logger for this module
+logger = logging.getLogger('mikrotik_api')
 
 load_dotenv()
 MIKROTIK_HOTSPOT_SERVER = os.getenv('MIKROTIK_HOTSPOT_SERVER', 'hotspot1')
 
 
-def add_hotspot_user(room_number: str, password: str, uptime_limit: str):
-    """
-    Creates a new Hotspot user on the Mikrotik router.
-    """
-    # 1. Clean up any old instances of this room number to prevent API conflicts
+# mikrotik_api/hotspot.py
+
+def add_hotspot_user(room_number: str, password: str, uptime_limit: str) -> str:
+    """Creates a new Hotspot user on the Mikrotik router and returns its internal ID."""
     remove_hotspot_user(room_number)
 
-    # 2. Add the new user using the Path.add() method
     with get_mikrotik_connection() as api:
         try:
             path = api.path('/ip/hotspot/user')
 
-            # Path.add() automatically formats the 'add' command and returns the new .id
-            path.add(
+            # path.add() automatically returns the new internal .id (e.g., '*1A')
+            mikrotik_id = path.add(
                 name=room_number,
                 password=password,
                 server=MIKROTIK_HOTSPOT_SERVER,
                 **{'limit-uptime': uptime_limit}
             )
-            print(f"[Mikrotik] Successfully added hotspot user: {room_number}")
+            logger.info(f"Successfully added hotspot user: {room_number} (ID: {mikrotik_id})")
+            return mikrotik_id
+
+        except ConnectionError as e:
+            logger.error(f"Router offline while adding {room_number}: {e}")
+            raise MikrotikConnectionError("Cannot connect to the Mikrotik router.")
         except TrapError as e:
-            print(f"[Mikrotik] Failed to add user {room_number}: {e}")
+            logger.error(f"Router rejected add command for {room_number}: {e}")
+            raise MikrotikOperationError(f"Router rejected the new password. Detail: {e}")
+        except Exception as e:
+            logger.error(f"Exception {room_number}: {e}")
 
-
-# mikrotik_api/hotspot.py
 
 def remove_hotspot_user(room_number: str):
-    """
-    Deletes a Hotspot user profile from the Mikrotik router.
-    """
+    """Deletes a Hotspot user profile from the Mikrotik router."""
     with get_mikrotik_connection() as api:
         try:
             path = api.path('/ip/hotspot/user')
             all_users = list(path("print"))
-
-            # FIX: Cast both sides to string to prevent int vs str mismatch
             users = [user for user in all_users if str(user.get('name')) == str(room_number)]
 
             if not users:
-                print(f"[Mikrotik] User {room_number} not found on router.")
+                logger.info(f"User {room_number} not found on router during cleanup.")
                 return
 
             for user in users:
                 path.remove(user['.id'])
-                print(f"[Mikrotik] Removed hotspot user profile: {room_number}")
+                logger.info(f"Removed hotspot user profile: {room_number}")
 
+        except ConnectionClosed as e:
+            logger.error(f"Router offline while removing {room_number}: {e}")
+            raise MikrotikConnectionError("Cannot connect to the Mikrotik router.")
         except TrapError as e:
-            print(f"[Mikrotik] Failed to remove user {room_number}: {e}")
+            logger.error(f"Router rejected remove command for {room_number}: {e}")
+            raise MikrotikOperationError(f"Router rejected the removal. Detail: {e}")
+        except Exception as e:
+            logger.error(f"Exception {room_number}: {e}")
 
 
 def drop_active_session(room_number: str):
-    """
-    Finds an actively connected device for this room and drops it.
-    """
+    """Finds an actively connected device for this room and removes it."""
     with get_mikrotik_connection() as api:
         try:
             path = api.path('/ip/hotspot/active')
-
-            # 1. Fetch all active sessions (Exactly like remove_hotspot_user)
             all_sessions = list(path("print"))
-
-            # 2. Filter in Python, casting to string to prevent type mismatches
             active_sessions = [s for s in all_sessions if str(s.get('user')) == str(room_number)]
 
             if not active_sessions:
-                print(f"[Mikrotik] No active session found for room {room_number}.")
+                logger.info(f"No active session found for room {room_number}.")
                 return
 
-            # 3. Drop the sessions
             for session in active_sessions:
-                # Since Path doesn't have a .drop() method, we use __call__
-                # to execute the "drop" command. We wrap it in tuple() to
-                # force the generator to execute the command immediately.
-                tuple(path("remove", numbers=session['.id']))
-                print(f"[Mikrotik] Dropped active session for room: {room_number}")
+                path.remove(session['.id'])
+                logger.info(f"Dropped active session for room: {room_number}")
 
+        except ConnectionClosed as e:
+            logger.error(f"Router offline while dropping session for {room_number}: {e}")
+            raise MikrotikConnectionError("Cannot connect to the Mikrotik router.")
         except TrapError as e:
-            print(f"[Mikrotik] Failed to drop session for {room_number}: {e}")
+            logger.error(f"Router rejected drop command for {room_number}: {e}")
+            raise MikrotikOperationError(f"Router rejected the session drop. Detail: {e}")
+        except Exception as e:
+            logger.error(f"Exception {room_number}: {e}")

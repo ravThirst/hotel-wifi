@@ -133,3 +133,36 @@ CRONJOBS = [
     # Example: Run every 5 minutes. We will replace 'expire_wifi_sessions' with our actual command later.
     ('*/5 * * * *', 'wifi.cron.expire_sessions'),
 ]
+
+# hotel_wifi_project/settings.py
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'mikrotik_errors.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'mikrotik_api': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
