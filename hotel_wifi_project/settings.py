@@ -126,11 +126,13 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'   # For production deployment later
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Django Crontab Configuration
+# Define the absolute path for the cron log file
+CRON_LOG_FILE = os.path.join(BASE_DIR, 'cron_jobs.log')
+
 CRONJOBS = [
-    # Format: ('cron schedule', 'django management command', '>> /path/to/logfile.log')
-    # Example: Run every 5 minutes. We will replace 'expire_wifi_sessions' with our actual command later.
-    ('*/5 * * * *', 'wifi.cron.expire_sessions'),
+    # Format: ('cron schedule', 'python.function.path', 'log redirect')
+    # '*/5 * * * *' means "Run every 5 minutes"
+    ('*/5 * * * *', 'wifi.cron.expire_sessions_job', f'>> {CRON_LOG_FILE} 2>&1'),
 ]
 
 # hotel_wifi_project/settings.py
