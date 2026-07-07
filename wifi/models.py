@@ -25,7 +25,8 @@ class WiFiSession(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(
-        help_text="When this session expires and the guest loses access."
+        verbose_name="Checkout Date & Time",
+        help_text="The exact date and time the guest checks out and WiFi expires."
     )
     is_active = models.BooleanField(
         default=True,
@@ -60,13 +61,20 @@ class WiFiSession(models.Model):
 
     @property
     def remaining_time(self):
-        """Return a human-readable string of time remaining."""
+        """Return a highly precise human-readable string of time remaining."""
         if not self.is_active or self.is_expired:
             return "Expired"
+
         delta = self.expires_at - timezone.now()
         total_seconds = int(delta.total_seconds())
-        hours, remainder = divmod(total_seconds, 3600)
+
+        days, remainder = divmod(total_seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
         minutes, _ = divmod(remainder, 60)
-        if hours > 0:
-            return f"{hours}h {minutes}m remaining"
-        return f"{minutes}m remaining"
+
+        parts = []
+        if days > 0: parts.append(f"{days}d")
+        if hours > 0: parts.append(f"{hours}h")
+        if minutes > 0: parts.append(f"{minutes}m")
+
+        return " ".join(parts) if parts else "Less than 1m"

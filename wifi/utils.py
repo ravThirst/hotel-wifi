@@ -44,10 +44,13 @@ def generate_wifi_password(length: int = None) -> str:
         return ''.join(secrets.choice("1234567890") for _ in range(8))
 
 
-def format_mikrotik_uptime(total_seconds: int) -> str:
+from datetime import timedelta
+
+def format_mikrotik_uptime(td: timedelta) -> str:
     """
-    Converts total seconds into Mikrotik's time interval format (e.g., '1d12h30m').
+    Converts a Python timedelta into Mikrotik's time string format (e.g., '2d14h30m').
     """
+    total_seconds = int(td.total_seconds())
     if total_seconds <= 0:
         return "1m"  # Fallback to 1 minute if somehow 0 or negative
 
@@ -57,13 +60,12 @@ def format_mikrotik_uptime(total_seconds: int) -> str:
     minutes, seconds = divmod(rem, 60)
 
     parts = []
-    if weeks > 0: parts.append(f"{weeks}w")
-    if days > 0: parts.append(f"{days}d")
-    if hours > 0: parts.append(f"{hours}h")
-    if minutes > 0: parts.append(f"{minutes}m")
-
-    # If the duration is less than a minute, Mikrotik still needs a valid string
-    if not parts and seconds > 0:
+    if weeks: parts.append(f"{weeks}w")
+    if days: parts.append(f"{days}d")
+    if hours: parts.append(f"{hours}h")
+    if minutes: parts.append(f"{minutes}m")
+    if seconds and not (weeks or days or hours or minutes):
+        # Only add seconds if it's less than a minute, otherwise Mikrotik prefers minute rounding
         parts.append(f"{seconds}s")
 
     return "".join(parts) if parts else "1m"
