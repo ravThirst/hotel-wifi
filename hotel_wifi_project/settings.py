@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv # Import the dotenv library
+from django.urls import reverse_lazy
 
 from pathlib import Path
 
@@ -9,6 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from the .env file
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+LOGIN_URL = reverse_lazy('admin:login')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -50,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'hotel_wifi_project.urls'
@@ -121,6 +125,17 @@ USE_TZ = True # CRITICAL: This ensures all datetimes in the DB are timezone-awar
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static'] # For custom CSS/JS/Logos
 STATIC_ROOT = BASE_DIR / 'staticfiles'   # For production deployment later
+
+# ADD THIS BLOCK:
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        # This tells Django to use WhiteNoise to serve and cache static files
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
