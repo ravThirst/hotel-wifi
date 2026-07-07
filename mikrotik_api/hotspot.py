@@ -53,11 +53,11 @@ def remove_hotspot_user(room_number: str):
 
             if not users:
                 logger.info(f"User {room_number} not found on router during cleanup.")
-                return
 
-            for user in users:
-                path.remove(user['.id'])
-                logger.info(f"Removed hotspot user profile: {room_number}")
+            else:
+                for user in users:
+                    path.remove(user['.id'])
+                    logger.info(f"Removed hotspot user profile: {room_number}")
 
         except ConnectionClosed as e:
             logger.error(f"Router offline while removing {room_number}: {e}")
@@ -68,28 +68,67 @@ def remove_hotspot_user(room_number: str):
         except Exception as e:
             logger.error(f"Exception {room_number}: {e}")
 
+        drop_active_session(room_number)
 
-def drop_active_session(room_number: str):
-    """Finds an actively connected device for this room and removes it."""
+
+# mikrotik_api/hotspot.py
+
+def clear_hotspot_cookies(room_number: str):
+    """
+    Removes hotspot cookies for the given user.
+    This prevents the guest's device from automatically reconnecting
+    and bypassing the captive portal login page.
+    """
     with get_mikrotik_connection() as api:
         try:
-            path = api.path('/ip/hotspot/active')
-            all_sessions = list(path("print"))
-            active_sessions = [s for s in all_sessions if str(s.get('user')) == str(room_number)]
+            path = api.path('/ip/hotspot/cookie')
+            all_cookies = list(path("print"))
 
-            if not active_sessions:
-                logger.info(f"No active session found for room {room_number}.")
+            # Filter cookies by user (casting to string to avoid type issues)
+            user_cookies = [c for c in all_cookies if str(c.get('user')) == str(room_number)]
+
+            if not user_cookies:
+                logger.info(f"No cookies found for room {room_number}.")
                 return
 
-            for session in active_sessions:
-                path.remove(session['.id'])
-                logger.info(f"Dropped active session for room: {room_number}")
+            for cookie in user_cookies:
+                path.remove(cookie['.id'])
+                logger.info(f"Cleared hotspot cookie for room: {room_number}")
 
-        except ConnectionClosed as e:
+        except ConnectionError as e:
+            logger.error(f"Router offline while clearing cookies for {room_number}: {e}")
+            raise MikrotikConnectionError("Cannot connect to the Mikrotik router.")
+        except TrapError as e:
+            logger.error(f"Router rejected cookie clear command for {room_number}: {e}")
+            raise MikrotikOperationError(f"Router rejected the cookie clear. Detail: {e}")
+
+
+def drop_active_session(room_number: str):
+    """
+    Completely wipes a room's hotspot state:
+    1. Removes the active connection (kills current internet).
+    2. Clears the hotspot cookie (forces captive portal on reconnect).
+    """
+    with get_mikrotik_connection() as api:
+        try:
+            # 1. Drop Active Sessions
+            active_path = api.path('/ip/hotspot/active')
+            all_sessions = list(active_path("print"))
+            active_sessions = [s for s in all_sessions if str(s.get('user')) == str(room_number)]
+
+            if active_sessions:
+                for session in active_sessions:
+                    active_path.remove(session['.id'])
+                    logger.info(f"Dropped active session for room: {room_number}")
+            else:
+                logger.info(f"No active session found for room {room_number}.")
+
+        except ConnectionError as e:
             logger.error(f"Router offline while dropping session for {room_number}: {e}")
             raise MikrotikConnectionError("Cannot connect to the Mikrotik router.")
         except TrapError as e:
             logger.error(f"Router rejected drop command for {room_number}: {e}")
             raise MikrotikOperationError(f"Router rejected the session drop. Detail: {e}")
-        except Exception as e:
-            logger.error(f"Exception {room_number}: {e}")
+
+    # 2. Clear Cookies (Called after to ensure active session is dead first)
+    clear_hotspot_cookies(room_number)
