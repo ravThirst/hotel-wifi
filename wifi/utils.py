@@ -26,7 +26,7 @@ def generate_wifi_password(length: int = None) -> str:
         # 3. Safety fallback in case the DB string was accidentally emptied
         if not allowed_chars:
             logger.warning("SystemSettings password_preset_chars is empty! Using fallback.")
-            allowed_chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            allowed_chars = "1234567890"
 
         if pwd_length <= 0:
             logger.warning(f"Invalid password length ({pwd_length}). Defaulting to 8.")
@@ -41,4 +41,29 @@ def generate_wifi_password(length: int = None) -> str:
     except Exception as e:
         logger.error(f"Failed to generate password: {e}")
         # Ultimate fallback so the app doesn't crash if the DB is unreachable
-        return ''.join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
+        return ''.join(secrets.choice("1234567890") for _ in range(8))
+
+
+def format_mikrotik_uptime(total_seconds: int) -> str:
+    """
+    Converts total seconds into Mikrotik's time interval format (e.g., '1d12h30m').
+    """
+    if total_seconds <= 0:
+        return "1m"  # Fallback to 1 minute if somehow 0 or negative
+
+    weeks, rem = divmod(total_seconds, 604800)
+    days, rem = divmod(rem, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, seconds = divmod(rem, 60)
+
+    parts = []
+    if weeks > 0: parts.append(f"{weeks}w")
+    if days > 0: parts.append(f"{days}d")
+    if hours > 0: parts.append(f"{hours}h")
+    if minutes > 0: parts.append(f"{minutes}m")
+
+    # If the duration is less than a minute, Mikrotik still needs a valid string
+    if not parts and seconds > 0:
+        parts.append(f"{seconds}s")
+
+    return "".join(parts) if parts else "1m"

@@ -1,0 +1,85 @@
+<!-- wifi/templates/wifi/dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | Hotel WiFi{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building"></i> Room Dashboard</h2>
+
+    <!-- Search Bar -->
+    <form method="GET" action="{% url 'dashboard' %}" class="d-flex" role="search">
+        <input class="form-control me-2" type="search" name="q" placeholder="Search Room Number..." value="{{ query }}" aria-label="Search">
+        <button class="btn btn-outline-primary" type="submit">Search</button>
+        {% if query %}
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary ms-2">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Room</th>
+                    <th>Floor</th>
+                    <th>Status</th>
+                    <th>Current Password</th>
+                    <th>Time Remaining</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for room in rooms %}
+                <tr>
+                    <td class="fw-bold fs-5">{{ room.room_number }}</td>
+                    <td>{{ room.floor }}</td>
+
+                    <!-- Status & Password Logic -->
+                    {% with session=room.current_session %}
+                        {% if session and session.is_active and not session.is_expired %}
+                            <td><span class="badge bg-success">Active</span></td>
+                            <td><code class="fs-5 text-primary">{{ session.password }}</code></td>
+                            <td>{{ session.remaining_time }}</td>
+                        {% elif session and session.is_expired %}
+                            <td><span class="badge bg-warning text-dark">Expired</span></td>
+                            <td class="text-muted">—</td>
+                            <td class="text-muted">Needs Reset</td>
+                        {% else %}
+                            <td><span class="badge bg-secondary">No Session</span></td>
+                            <td class="text-muted">—</td>
+                            <td class="text-muted">—</td>
+                        {% endif %}
+                    {% endwith %}
+
+                    <!-- Action Form -->
+                    <td class="text-end">
+                        <form method="POST" action="{% url 'generate_session' room.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <div class="input-group input-group-sm" style="width: 220px; margin-left: auto;">
+                                <select name="timeout" class="form-select" required>
+                                    <option value="12">12 Hours</option>
+                                    <option value="24" selected>24 Hours</option>
+                                    <option value="72">3 Days</option>
+                                    <option value="168">7 Days</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary" title="Generate & Activate">
+                                    <i class="bi bi-arrow-repeat"></i> Generate
+                                </button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No rooms found. {% if query %}Try a different search.{% else %}Add rooms via the Admin Panel.{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
