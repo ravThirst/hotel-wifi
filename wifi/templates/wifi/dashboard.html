@@ -54,38 +54,46 @@
                         {% endif %}
                     {% endwith %}
 
-                    <!-- Action Form -->
+                    <!-- wifi/templates/wifi/dashboard.html -->
                     <td class="text-end">
-                        <div class="d-flex flex-column gap-1 align-items-end">
+                        <div class="d-flex gap-1 justify-content-end align-items-center">
 
-                            <!-- 1. GENERATE FORM (Always available to force a new password) -->
-                            <form method="POST" action="{% url 'generate_session' room.id %}" class="d-inline">
-                                {% csrf_token %}
-                                <div class="input-group input-group-sm" style="width: 260px;">
-                                    <input type="date" name="checkout_date" class="form-control" required title="Checkout Date">
-                                    <span class="input-group-text">13:00</span>
-                                    <button type="submit" class="btn btn-primary" title="Generate New Password">
-                                        <i class="bi bi-key"></i> New
-                                    </button>
-                                </div>
-                            </form>
-
-                            <!-- 2. EXTEND FORM (Only shows if an active session exists) -->
+                            <!-- Print Ticket Button (Only shows if active) -->
                             {% with session=room.current_session %}
                                 {% if session and session.is_active and not session.is_expired %}
-                                    <form method="POST" action="{% url 'extend_session' room.id %}" class="d-inline">
-                                        {% csrf_token %}
-                                        <div class="input-group input-group-sm" style="width: 260px;">
-                                            <input type="date" name="new_checkout_date" class="form-control" required title="New Checkout Date">
-                                            <span class="input-group-text">13:00</span>
-                                            <button type="submit" class="btn btn-success" title="Extend Current Password">
-                                                <i class="bi bi-clock-history"></i> Extend
-                                            </button>
-                                        </div>
-                                    </form>
+                                    <a href="{% url 'print_ticket' room.id %}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Print PDF Ticket">
+                                        <i class="bi bi-printer-fill"></i>
+                                    </a>
                                 {% endif %}
                             {% endwith %}
 
+                            <!-- Unified Action Form -->
+                            <form method="POST" action="{% url 'handle_session' room.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <div class="input-group input-group-sm" style="width: 340px;">
+                                    <!-- Single Date Input -->
+                                    <input type="date" name="checkout_date" class="form-control" required title="Checkout Date">
+                                    <span class="input-group-text">13:00</span>
+
+                                    <!-- Generate Button -->
+                                    <button type="submit" name="action" value="generate" class="btn btn-primary" title="Generate New Password">
+                                        <i class="bi bi-key"></i> New
+                                    </button>
+
+                                    <!-- Extend Button (Disabled if no active session) -->
+                                    {% with session=room.current_session %}
+                                        {% if session and session.is_active and not session.is_expired %}
+                                            <button type="submit" name="action" value="extend" class="btn btn-success" title="Extend Current Password">
+                                                <i class="bi bi-clock-history"></i> Ext
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-outline-secondary" disabled title="No active session to extend">
+                                                <i class="bi bi-clock-history"></i> Ext
+                                            </button>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                            </form>
                         </div>
                     </td>
                 </tr>
