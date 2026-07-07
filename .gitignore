@@ -4,3 +4,4 @@
 **/migrations/__pycache__/
 *.pyc
 /mikrotik_errors.log
+/staticfiles/
