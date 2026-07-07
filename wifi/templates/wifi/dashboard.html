@@ -55,19 +55,39 @@
                     {% endwith %}
 
                     <!-- Action Form -->
-                <!-- Action Form -->
-                <td class="text-end">
-                    <form method="POST" action="{% url 'generate_session' room.id %}" class="d-inline">
-                        {% csrf_token %}
-                        <div class="d-flex gap-1 justify-content-end" style="min-width: 280px;">
-                            <input type="date" name="checkout_date" class="form-control form-control-sm" required title="Checkout Date">
-                            <input type="time" name="checkout_time" class="form-control form-control-sm" required title="Checkout Time (24h)">
-                            <button type="submit" class="btn btn-primary btn-sm" title="Generate & Activate">
-                                <i class="bi bi-arrow-repeat"></i> Gen
-                            </button>
+                    <td class="text-end">
+                        <div class="d-flex flex-column gap-1 align-items-end">
+
+                            <!-- 1. GENERATE FORM (Always available to force a new password) -->
+                            <form method="POST" action="{% url 'generate_session' room.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <div class="input-group input-group-sm" style="width: 260px;">
+                                    <input type="date" name="checkout_date" class="form-control" required title="Checkout Date">
+                                    <span class="input-group-text">13:00</span>
+                                    <button type="submit" class="btn btn-primary" title="Generate New Password">
+                                        <i class="bi bi-key"></i> New
+                                    </button>
+                                </div>
+                            </form>
+
+                            <!-- 2. EXTEND FORM (Only shows if an active session exists) -->
+                            {% with session=room.current_session %}
+                                {% if session and session.is_active and not session.is_expired %}
+                                    <form method="POST" action="{% url 'extend_session' room.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <div class="input-group input-group-sm" style="width: 260px;">
+                                            <input type="date" name="new_checkout_date" class="form-control" required title="New Checkout Date">
+                                            <span class="input-group-text">13:00</span>
+                                            <button type="submit" class="btn btn-success" title="Extend Current Password">
+                                                <i class="bi bi-clock-history"></i> Extend
+                                            </button>
+                                        </div>
+                                    </form>
+                                {% endif %}
+                            {% endwith %}
+
                         </div>
-                    </form>
-                </td>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>

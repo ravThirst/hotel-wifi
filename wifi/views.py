@@ -11,9 +11,12 @@ from datetime import datetime
 from rooms.models import Room
 from .models import WiFiSession
 from .utils import generate_wifi_password, format_mikrotik_uptime
-from mikrotik_api.hotspot import add_hotspot_user
+from mikrotik_api.hotspot import add_hotspot_user, update_hotspot_user_limit
 from mikrotik_api.exceptions import MikrotikConnectionError, MikrotikOperationError
 
+from django.http import HttpResponse
+from rooms.models import SystemSettings
+from .utils import render_to_pdf # Make sure to import this!
 
 @login_required
 def dashboard(request):
@@ -43,23 +46,19 @@ def generate_session(request, room_id):
     if request.method == 'POST':
         room = get_object_or_404(Room, id=room_id, is_active=True)
 
-        # 1. Get Date and Time from form
+        # 1. Get Date from form (Time is hardcoded to 13:00)
         date_str = request.POST.get('checkout_date')
-        time_str = request.POST.get('checkout_time')
 
-        if not date_str or not time_str:
-            messages.error(request, "Please provide both checkout date and time.")
+        if not date_str:
+            messages.error(request, "Please provide a checkout date.")
             return redirect('dashboard')
 
         try:
-            # 2. Combine strings into a naive datetime object
-            naive_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-
-            # 3. Make it timezone-aware using the server's configured TIME_ZONE
+            # Combine date string with static 13:00 time
+            naive_dt = datetime.strptime(f"{date_str} 13:00", "%Y-%m-%d %H:%M")
             checkout_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
-
         except ValueError:
-            messages.error(request, "Invalid date or time format.")
+            messages.error(request, "Invalid date format.")
             return redirect('dashboard')
 
         # 4. Validate that checkout is in the future
@@ -106,6 +105,108 @@ def generate_session(request, room_id):
         messages.success(
             request,
             f"WiFi activated for Room {room.room_number} until {timezone.localtime(checkout_dt).strftime('%Y-%m-%d %H:%M')}! Password: {password}"
+        )
+        return redirect('dashboard')
+
+    return redirect('dashboard')
+
+
+# wifi/views.py
+import os
+import base64
+from django.contrib.staticfiles import finders
+
+
+@login_required
+def print_ticket(request, room_id):
+    """
+    Generates and returns a PDF ticket for the room's active WiFi session.
+    """
+    room = get_object_or_404(Room, id=room_id)
+    session = room.current_session
+
+    if not session or not session.is_active or session.is_expired:
+        messages.error(request, "No active WiFi session to print for this room.")
+        return redirect('dashboard')
+
+    # --- BULLETPROOF LOGO HANDLING ---
+    logo_base64 = ""
+    # Find the logo in your static folder
+    logo_path = finders.find('logo.png')
+    if logo_path and os.path.exists(logo_path):
+        with open(logo_path, "rb") as img_file:
+            # Convert image to Base64 string so xhtml2pdf can render it natively
+            logo_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+
+    context = {
+        'room': room,
+        'session': session,
+        'ssid': SystemSettings.load().wifi_ssid,
+        'logo_base64': logo_base64,  # Pass the Base64 string to the template
+    }
+
+    pdf = render_to_pdf('wifi/ticket.html', context)
+
+    if pdf:
+        response = HttpResponse(pdf, content_type='application/pdf')
+        filename = f"WiFi_Ticket_Room_{room.room_number}.pdf"
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+
+    return HttpResponse("Error generating PDF. Please check server logs.", status=400)
+
+
+@login_required
+def extend_session(request, room_id):
+    """
+    Extends the checkout time of an active session WITHOUT changing the password.
+    """
+    if request.method == 'POST':
+        room = get_object_or_404(Room, id=room_id, is_active=True)
+        session = room.current_session
+
+        if not session or not session.is_active or session.is_expired:
+            messages.error(request, "No active session to extend.")
+            return redirect('dashboard')
+
+        date_str = request.POST.get('new_checkout_date')
+        if not date_str:
+            messages.error(request, "Please provide a new checkout date.")
+            return redirect('dashboard')
+
+        try:
+            naive_dt = datetime.strptime(f"{date_str} 13:00", "%Y-%m-%d %H:%M")
+            new_checkout_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect('dashboard')
+
+        now = timezone.now()
+        if new_checkout_dt <= now:
+            messages.error(request, "New checkout time must be in the future.")
+            return redirect('dashboard')
+
+        if new_checkout_dt <= session.expires_at:
+            messages.warning(request, "New checkout date must be later than the current one.")
+            return redirect('dashboard')
+
+        # Calculate how many seconds to ADD to their current session
+        time_difference = new_checkout_dt - now
+        additional_seconds = int(time_difference.total_seconds())
+
+        try:
+            update_hotspot_user_limit(str(room.room_number), additional_seconds)
+        except (MikrotikConnectionError, MikrotikOperationError) as e:
+            messages.error(request, f"Router Error: {e}")
+            return redirect('dashboard')
+
+        # Update the database
+        session.expires_at = new_checkout_dt
+        session.save()
+
+        messages.success(
+            request,
+            f"Extended WiFi for Room {room.room_number} until {timezone.localtime(new_checkout_dt).strftime('%Y-%m-%d %H:%M')}. Password remains the same."
         )
         return redirect('dashboard')
 

@@ -3,6 +3,12 @@ import secrets
 import logging
 from rooms.models import SystemSettings
 
+import os
+from io import BytesIO
+from django.template.loader import get_template
+from django.conf import settings
+from xhtml2pdf import pisa
+
 # Initialize logger for this module
 logger = logging.getLogger('wifi.utils')
 
@@ -69,3 +75,77 @@ def format_mikrotik_uptime(td: timedelta) -> str:
         parts.append(f"{seconds}s")
 
     return "".join(parts) if parts else "1m"
+
+
+def link_callback(uri, rel):
+    """
+    Convert HTML URIs to absolute system paths so xhtml2pdf can access static files.
+    """
+    from django.contrib.staticfiles import finders
+
+    # If it's a static file (e.g., /static/logo.png)
+    if uri.startswith(settings.STATIC_URL):
+        path = uri.replace(settings.STATIC_URL, "")
+        abs_path = finders.find(path)
+        if not abs_path:
+            raise Exception(f"Static file not found: {path}")
+        return abs_path
+
+    # If it's a media file (e.g., /media/uploads/image.jpg)
+    elif uri.startswith(settings.MEDIA_URL):
+        path = uri.replace(settings.MEDIA_URL, "")
+        return os.path.join(settings.MEDIA_ROOT, path)
+
+    # Fallback to absolute path
+    return uri
+
+
+def render_to_pdf(template_src, context_dict={}):
+    """
+    Renders a Django template to a PDF byte stream.
+    """
+    template = get_template(template_src)
+    html = template.render(context_dict)
+    result = BytesIO()
+
+    # Create the PDF. We use the link_callback to resolve static images.
+    pdf = pisa.pisaDocument(
+        BytesIO(html.encode("UTF-8")),
+        result,
+        link_callback=link_callback
+    )
+
+    if not pdf.err:
+        return result.getvalue()
+    return None
+
+
+# wifi/utils.py
+import re
+
+
+def parse_mikrotik_time(time_str: str) -> int:
+    """
+    Parses a Mikrotik time string (e.g., '1d12h30m', '3h', '0s') into total seconds.
+    """
+    if not time_str or str(time_str) == '0s':
+        return 0
+
+    pattern = re.compile(r'(\d+)([wdhms])')
+    matches = pattern.findall(str(time_str))
+
+    total_seconds = 0
+    for value, unit in matches:
+        val = int(value)
+        if unit == 'w':
+            total_seconds += val * 604800
+        elif unit == 'd':
+            total_seconds += val * 86400
+        elif unit == 'h':
+            total_seconds += val * 3600
+        elif unit == 'm':
+            total_seconds += val * 60
+        elif unit == 's':
+            total_seconds += val
+
+    return total_seconds
