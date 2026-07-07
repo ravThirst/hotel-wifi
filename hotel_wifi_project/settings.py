@@ -108,13 +108,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = os.getenv('LANGUAGE_CODE')
+TIME_ZONE = os.getenv('TIME_ZONE', 'UTC') # Read from .env
 USE_I18N = True
-
-USE_TZ = True
+USE_TZ = True # CRITICAL: This ensures all datetimes in the DB are timezone-aware
 
 
 # Static files (CSS, JavaScript, Images)
