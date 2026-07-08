@@ -1,16 +1,16 @@
 <!-- wifi/templates/wifi/dashboard.html -->
 {% extends 'base.html' %}
 
-{% block title %}Dashboard | Hotel WiFi{% endblock %}
+{% block title %}Панель управления | WiFi Hotspot{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-building"></i> Room Dashboard</h2>
+    <h2><i class="bi bi-building"></i> Панель управления номерами </h2>
 
     <!-- Search Bar -->
     <form method="GET" action="{% url 'dashboard' %}" class="d-flex" role="search">
-        <input class="form-control me-2" type="search" name="q" placeholder="Search Room Number..." value="{{ query }}" aria-label="Search">
-        <button class="btn btn-outline-primary" type="submit">Search</button>
+        <input class="form-control me-2" type="search" name="q" placeholder="Искать по номеру..." value="{{ query }}" aria-label="Search">
+        <button class="btn btn-outline-primary" type="submit">Поиск</button>
         {% if query %}
             <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary ms-2">Clear</a>
         {% endif %}
@@ -22,12 +22,12 @@
         <table class="table table-hover table-striped mb-0 align-middle">
            <thead class="table-light">
                 <tr>
-                    <th>Room</th>
-                    <th>Floor</th>
-                    <th>Status</th>
-                    <th>Current Password</th>
-                    <th>Checkout Time</th> <!-- CHANGED -->
-                    <th class="text-end">Actions</th>
+                    <th>Номер</th>
+                    <th>Этаж</th>
+                    <th>Статус</th>
+                    <th>Текущий пароль</th>
+                    <th>Активен до</th> <!-- CHANGED -->
+                    <th class="text-end">Действия</th>
                 </tr>
             </thead>
             <tbody>
@@ -61,7 +61,7 @@
                             <!-- Print Ticket Button (Only shows if active) -->
                             {% with session=room.current_session %}
                                 {% if session and session.is_active and not session.is_expired %}
-                                    <a href="{% url 'print_ticket' room.id %}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Print PDF Ticket">
+                                    <a href="{% url 'print_ticket' room.id %}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Печать в PDF">
                                         <i class="bi bi-printer-fill"></i>
                                     </a>
                                 {% endif %}
@@ -72,23 +72,23 @@
                                 {% csrf_token %}
                                 <div class="input-group input-group-sm" style="width: 340px;">
                                     <!-- Single Date Input -->
-                                    <input type="date" name="checkout_date" class="form-control" required title="Checkout Date">
+                                    <input type="date" name="checkout_date" class="form-control" required title="Активен до">
                                     <span class="input-group-text">13:00</span>
 
                                     <!-- Generate Button -->
-                                    <button type="submit" name="action" value="generate" class="btn btn-primary" title="Generate New Password">
-                                        <i class="bi bi-key"></i> New
+                                    <button type="submit" name="action" value="generate" class="btn btn-primary" title="Сгенерировать новый пароль">
+                                        <i class="bi bi-key"></i> Новый
                                     </button>
 
                                     <!-- Extend Button (Disabled if no active session) -->
                                     {% with session=room.current_session %}
                                         {% if session and session.is_active and not session.is_expired %}
-                                            <button type="submit" name="action" value="extend" class="btn btn-success" title="Extend Current Password">
-                                                <i class="bi bi-clock-history"></i> Ext
+                                            <button type="submit" name="action" value="extend" class="btn btn-success" title="Продлить текущий пароль">
+                                                <i class="bi bi-clock-history"></i> Продлить
                                             </button>
                                         {% else %}
-                                            <button type="button" class="btn btn-outline-secondary" disabled title="No active session to extend">
-                                                <i class="bi bi-clock-history"></i> Ext
+                                            <button type="button" class="btn btn-outline-secondary" disabled title="Нет сессий для продления">
+                                                <i class="bi bi-clock-history"></i> Продлить
                                             </button>
                                         {% endif %}
                                     {% endwith %}

@@ -126,6 +126,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static'] # For custom CSS/JS/Logos
 STATIC_ROOT = BASE_DIR / 'staticfiles'   # For production deployment later
 
+
 # ADD THIS BLOCK:
 STORAGES = {
     "default": {

@@ -1,6 +1,9 @@
 # wifi/utils.py
 import secrets
 import logging
+
+from xhtml2pdf.files import pisaFileObject
+
 from rooms.models import SystemSettings
 
 import os
@@ -85,16 +88,16 @@ def link_callback(uri, rel):
 
     # If it's a static file (e.g., /static/logo.png)
     if uri.startswith(settings.STATIC_URL):
-        path = uri.replace(settings.STATIC_URL, "")
-        abs_path = finders.find(path)
-        if not abs_path:
-            raise Exception(f"Static file not found: {path}")
-        return abs_path
+        path =  os.path.join(settings.STATIC_ROOT, uri.replace(settings.STATIC_URL, ''))
+        pisaFileObject.getNamedFile = lambda self: path
+        return path
+
 
     # If it's a media file (e.g., /media/uploads/image.jpg)
     elif uri.startswith(settings.MEDIA_URL):
-        path = uri.replace(settings.MEDIA_URL, "")
-        return os.path.join(settings.MEDIA_ROOT, path)
+        path =  os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, ''))
+        pisaFileObject.getNamedFile = lambda self: path
+        return path
 
     # Fallback to absolute path
     return uri
@@ -112,6 +115,7 @@ def render_to_pdf(template_src, context_dict={}):
     pdf = pisa.pisaDocument(
         BytesIO(html.encode("UTF-8")),
         result,
+        encodind='UTF-8',
         link_callback=link_callback
     )
 

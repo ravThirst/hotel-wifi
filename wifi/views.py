@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render
 
 # wifi/views.py
@@ -52,7 +54,7 @@ def handle_session(request, room_id):
 
     # 1. Validate Date
     if not date_str:
-        messages.error(request, "Please provide a checkout date.")
+        messages.error(request, "Пожалуйста введите период действия.")
         return redirect('dashboard')
 
     try:
@@ -60,12 +62,12 @@ def handle_session(request, room_id):
         naive_dt = datetime.strptime(f"{date_str} 13:00", "%Y-%m-%d %H:%M")
         target_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
     except ValueError:
-        messages.error(request, "Invalid date format.")
+        messages.error(request, "Неверный формат даты.")
         return redirect('dashboard')
 
     now = timezone.now()
     if target_dt <= now:
-        messages.error(request, "Checkout time must be in the future.")
+        messages.error(request, "Дата не должна быть раньше текущей.")
         return redirect('dashboard')
 
     # 2. Route based on which button was clicked
@@ -92,18 +94,18 @@ def handle_session(request, room_id):
         )
         messages.success(
             request,
-            f"WiFi activated for Room {room.room_number} until {timezone.localtime(target_dt).strftime('%Y-%m-%d %H:%M')}! Password: {password}"
+            f"WiFi активирован для номера {room.room_number} до {timezone.localtime(target_dt).strftime('%Y-%m-%d %H:%M')}! Пароль: {password}"
         )
 
     elif action == 'extend':
         # --- EXTEND LOGIC ---
         session = room.current_session
         if not session or not session.is_active or session.is_expired:
-            messages.error(request, "No active session to extend.")
+            messages.error(request, "Нет активный сессий для продления.")
             return redirect('dashboard')
 
         if target_dt <= session.expires_at:
-            messages.warning(request, "New checkout date must be later than the current one.")
+            messages.warning(request, "Дата продления не должна быть раньше текущей даты действия.")
             return redirect('dashboard')
 
         # Calculate how many seconds to ADD to their current session
@@ -120,11 +122,11 @@ def handle_session(request, room_id):
         session.save()
         messages.success(
             request,
-            f"Extended WiFi for Room {room.room_number} until {timezone.localtime(target_dt).strftime('%Y-%m-%d %H:%M')}. Password remains the same."
+            f"Продлен WiFi для номера {room.room_number} до {timezone.localtime(target_dt).strftime('%Y-%m-%d %H:%M')}. Пароль останется без изменения."
         )
 
     else:
-        messages.error(request, "Invalid action.")
+        messages.error(request, "Неверное действие.")
 
     return redirect('dashboard')
 
@@ -144,7 +146,7 @@ def print_ticket(request, room_id):
     session = room.current_session
 
     if not session or not session.is_active or session.is_expired:
-        messages.error(request, "No active WiFi session to print for this room.")
+        messages.error(request, "Нет активный сессий для печати.")
         return redirect('dashboard')
 
     # --- BULLETPROOF LOGO HANDLING ---
@@ -171,4 +173,4 @@ def print_ticket(request, room_id):
         response['Content-Disposition'] = f'inline; filename="{filename}"'
         return response
 
-    return HttpResponse("Error generating PDF. Please check server logs.", status=400)
+    return HttpResponse("Ошибка генерации PDF. Please check server logs.", status=400)

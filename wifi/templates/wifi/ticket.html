@@ -4,14 +4,16 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>WiFi Ticket</title>
+    <title>WiFi</title>
     <style>
         @page {
             size: a5 portrait;
-            margin: 2cm;
+            margin: 1cm;
         }
+        @font-face { font-family: Ariala; src: url(/static/fonts/PT_Serif/PTSerif-Bold.ttf);}
+
         body {
-            font-family: Helvetica, sans-serif;
+            font-family: Ariala, sans-serif;
             color: #333333;
             font-size: 12pt;
         }
@@ -32,7 +34,7 @@
                 {% if logo_base64 %}
                     <img src="data:image/png;base64,{{ logo_base64 }}" style="height: 50px; width: auto;" /><br/>
                 {% endif %}
-                <span class="title">Guest WiFi Access</span>
+                <span class="title">Доступ к гостевому WiFi</span>
             </td>
         </tr>
     </table>
@@ -43,7 +45,7 @@
     <table width="100%" border="0" cellpadding="0" cellspacing="0">
         <tr>
             <td class="center room">
-                Room {{ room.room_number }}
+                Номер {{ room.room_number }}
             </td>
         </tr>
     </table>
@@ -53,21 +55,21 @@
     <table width="100%" border="0" cellpadding="15" cellspacing="0" style="border: 2px dashed #999999; background-color: #f4f4f4;">
         <tr>
             <td class="center">
-                <span class="label">Network Name (SSID)</span><br/>
+                <span class="label">Имя сети (SSID)</span><br/>
                 <br/>
                 <span class="value">{{ ssid }}</span>
             </td>
         </tr>
         <tr>
             <td class="center" style="padding-top: 10px;">
-                <span class="label">User</span><br/>
+                <span class="label">Имя пользователя</span><br/>
                 <br/>
                 <span class="value">room{{ room.room_number }}</span>
             </td>
         </tr>
         <tr>
             <td class="center" style="padding-top: 10px;">
-                <span class="label">Password</span><br/>
+                <span class="label">Пароль</span><br/>
                 <br/>
                 <span class="value">{{ session.password }}</span>
             </td>
@@ -80,8 +82,8 @@
     <table width="100%" border="0" cellpadding="0" cellspacing="0" class="footer">
         <tr>
             <td class="center">
-                Thank you for staying with us!<br/>
-                Please contact the front desk if you need assistance.
+                Спасибо, что остановились у нас!<br/>
+                Если вам потребуется помощь, пожалуйста, обратитесь на ресепшн.
             </td>
         </tr>
     </table>
