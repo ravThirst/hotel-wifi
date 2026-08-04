@@ -14,11 +14,18 @@ logger = logging.getLogger('mikrotik_api')
 load_dotenv()
 MIKROTIK_HOTSPOT_SERVER = os.getenv('MIKROTIK_HOTSPOT_SERVER', 'hotspot1')
 
+def get_hotspot_username(room_number: str) -> str:
+    prefix = "room"
+    if not room_number.startswith(prefix):
+        return f"room{str(room_number).strip()}"
+    else:
+        return room_number
 
 # mikrotik_api/hotspot.py
 
 def add_hotspot_user(room_number: str, password: str, uptime_limit: str) -> str:
     """Creates a new Hotspot user on the Mikrotik router and returns its internal ID."""
+    room_number = get_hotspot_username(room_number)
     remove_hotspot_user(room_number)
 
     with get_mikrotik_connection() as api:
@@ -47,6 +54,7 @@ def add_hotspot_user(room_number: str, password: str, uptime_limit: str) -> str:
 
 def remove_hotspot_user(room_number: str):
     """Deletes a Hotspot user profile from the Mikrotik router."""
+    room_number = get_hotspot_username(room_number)
     with get_mikrotik_connection() as api:
         try:
             path = api.path('/ip/hotspot/user')
@@ -81,6 +89,7 @@ def clear_hotspot_cookies(room_number: str):
     This prevents the guest's device from automatically reconnecting
     and bypassing the captive portal login page.
     """
+    room_number = get_hotspot_username(room_number)
     with get_mikrotik_connection() as api:
         try:
             path = api.path('/ip/hotspot/cookie')
@@ -144,6 +153,7 @@ def update_hotspot_user_limit(room_number: str, additional_seconds: int):
     Extends the limit-uptime of an existing Hotspot user without changing the password.
     Adds the additional_seconds to the user's CURRENT uptime to prevent immediate disconnection.
     """
+    room_number = get_hotspot_username(room_number)
     with get_mikrotik_connection() as api:
         try:
             path = api.path('/ip/hotspot/user')

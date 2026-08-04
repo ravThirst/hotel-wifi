@@ -24,7 +24,12 @@
                     {% if user.is_staff %}
                         <a class="nav-link text-light" href="{% url 'admin:index' %}">Панель администратора</a>
                     {% endif %}
-                    <a class="nav-link text-light" href="{% url 'admin:logout' %}">Выход</a>
+                    <a href="#" class="nav-link text-light" onclick="document.getElementById('logout-form').submit(); return false;">
+                        Выход
+                    </a>
+                    <form id="logout-form" method="post" action="{% url 'admin:logout' %}" style="display: none;">
+                        {% csrf_token %}
+                    </form>
                 {% else %}
                     <a class="nav-link text-light" href="{% url 'admin:login' %}">Войти</a>
                 {% endif %}
